@@ -173,5 +173,4 @@ function onTick()
 end
 
 
--- ISSUE: When torpedo starts to move at an angle to a target then due to relative motion it appears that the target starts moving backward, even though it is still moving forward
--- HOw to determine whether the target has started moving backward, or is just simply falling behind due to torpedo gaining on it?
+-- ISSUE: HAS TROUBLE WITH MANOUVERING ENEMIES
