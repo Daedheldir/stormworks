@@ -131,7 +131,7 @@ desired_azimuth_change_average = LifeBoatAPI.LBRollingAverage:new(DATA_AVERAGING
 
 function onTick()
     ticks = ticks + 1
-    local APN_GAIN = property.getNumber("PN Gain")
+    local PN_GAIN = property.getNumber("PN Gain")
     local TARGET_DETECTION_AZIMUTH_LIMIT = property.getNumber("Detection Azimuth Limit")
     angular_velocity_average:lbrollingaverage_addValue(input.getNumber(31)*360)-- torpedo turn rate in degrees / second
 
@@ -155,13 +155,13 @@ function onTick()
     current_target.yaw = current_target_yaw_average.average
     yaw_relative_average:lbrollingaverage_addValue(calculateTargetRelativeAngularVelocityPerSecond(current_target.yaw, previous_target.yaw))
     current_target.yaw_relative_rate = yaw_relative_average.average
-    
+
     yaw_actual_average:lbrollingaverage_addValue(calculateTargetAbsoluteAngularVelocityPerSecond(current_target.yaw_relative_rate, angular_velocity_average.average))
     current_target.yaw_actual_rate = yaw_actual_average.average
     predicted_future_target_yaw = current_target.yaw + current_target.yaw_relative_rate
 
     --desired azimuth change in degrees per second
-    desired_azimuth_change_average:lbrollingaverage_addValue(APN_GAIN * current_target.yaw_actual_rate)
+    desired_azimuth_change_average:lbrollingaverage_addValue(PN_GAIN * current_target.yaw_actual_rate)
     output.setNumber(1, math.clamp(-1,1,desired_azimuth_change_average.average / LifeBoatAPI.LBMaths.lbmaths_secondsToTicks))
     output.setNumber(2, current_target.pitch)
     output.setNumber(3, current_target.yaw)
