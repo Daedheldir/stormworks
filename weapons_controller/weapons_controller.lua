@@ -48,48 +48,118 @@ require("MathAdditions")
 PREVIOUS_WEAPON_SELECT_UP_STATE = false
 PREVIOUS_WEAPON_SELECT_DOWN_STATE = false
 
-SELECTED_WEAPON_INDEX = 1
-SELECTED_WEAPON_TYPE = 0
-SELECTED_WEAPON_LOADED = false
-WEAPONS_COUNT = 4--property.getNumber("Weapons Count")
-
-WEAPON_HARDPOINTS = {}
-for i = 1, WEAPONS_COUNT, 1 do
-    local weapon = {
-        loaded = false,
-        weapon_type = -1,
-    }
-    table.insert(WEAPON_HARDPOINTS, i, weapon)
+function DefaultAction(weapons_fire)
+    return weapons_fire
 end
 
-function onTick()
-    local WEAPON_SELECT_UP = input.getBool(1)
-    local WEAPON_SELECT_DOWN = input.getBool(2)
+selected_weapon = {
+    loaded = false,
+    weapon_type = -1,
+    action = DefaultAction
+}
 
-    if WEAPON_SELECT_UP and PREVIOUS_WEAPON_SELECT_UP_STATE == false then
-        SELECTED_WEAPON_INDEX = SELECTED_WEAPON_INDEX + 1
-    elseif WEAPON_SELECT_DOWN and PREVIOUS_WEAPON_SELECT_DOWN_STATE == false then
-        SELECTED_WEAPON_INDEX = SELECTED_WEAPON_INDEX - 1
-    end
-    SELECTED_WEAPON_INDEX = math.clamp(1, WEAPONS_COUNT, SELECTED_WEAPON_INDEX)
+WEAPONS_COUNT = 8--property.getNumber("Weapons Count")
 
-    PREVIOUS_WEAPON_SELECT_UP_STATE = WEAPON_SELECT_UP
-    PREVIOUS_WEAPON_SELECT_DOWN_STATE = WEAPON_SELECT_DOWN
+CHANNELS = {
+    NUMBERS = {
+        INPUT = {
+            HARDPOINT_1_WEAPON_TYPE = 1,
+            HARDPOINT_2_WEAPON_TYPE = 2,
+            HARDPOINT_3_WEAPON_TYPE = 3,
+            HARDPOINT_4_WEAPON_TYPE = 4,
+            HARDPOINT_5_WEAPON_TYPE = 5,
+            HARDPOINT_6_WEAPON_TYPE = 6,
+            HARDPOINT_7_WEAPON_TYPE = 7,
+            HARDPOINT_8_WEAPON_TYPE = 8
+        },
+        OUTPUT = {
+            SELECTED_WEAPON_INDEX = 31,
+            HARDPOINT_WEAPON_TYPE = 32
+        }
+    },
+    BOOLEANS = {
+        INPUT = {
+            HARDPOINT_1_LOADED = 1,
+            HARDPOINT_2_LOADED = 2,
+            HARDPOINT_3_LOADED = 3,
+            HARDPOINT_4_LOADED = 4,
+            HARDPOINT_5_LOADED = 5,
+            HARDPOINT_6_LOADED = 6,
+            HARDPOINT_7_LOADED = 7,
+            HARDPOINT_8_LOADED = 8,
+            NEXT_HARDPOINT = 30,
+            PREVIOUS_HARDPOINT = 31,
+            TRIGGER_BUTTON = 32
+        },
+        OUTPUT = {
+            SELECTED_HARDPOINT_FIRE = 31,
+            SELECTED_HARDPOINT_LOADED = 32,
+        }
+    }
+}
 
-    SELECTED_WEAPON_TYPE = WEAPON_HARDPOINTS[SELECTED_WEAPON_INDEX].weapon_type
-    SELECTED_WEAPON_LOADED = WEAPON_HARDPOINTS[SELECTED_WEAPON_INDEX].loaded
+WEAPON_TYPES = {
+    RADAR_MISSILE = 10,
+    CANNON = 12
+}
 
-    local WEAPONS_FIRE = input.getBool(3)
+function RadarMissileTriggerAction(weapons_fire)
+    output.setBool(CHANNELS.BOOLEANS.OUTPUT.SELECTED_HARDPOINT_FIRE, weapons_fire)
+end
+function CannonTriggerAction(weapons_fire)
+    output.setBool(CHANNELS.BOOLEANS.OUTPUT.SELECTED_HARDPOINT_FIRE, weapons_fire)
+end
 
-    -- Reset all weapon fire outputs
-    if WEAPONS_FIRE then
-        output.setBool(SELECTED_WEAPON_INDEX, true)
-    else
-        for i = 1, WEAPONS_COUNT, 1 do
-            output.setBool(i, false)
+WEAPON_HARDPOINTS = {}
+
+function UpdateWeaponHardpoint()
+    WEAPON_HARDPOINTS = {}
+    for i = 1, WEAPONS_COUNT, 1 do
+        local weapon = {
+            loaded = input.getBool(i),
+            weapon_type = input.getNumber(i),
+            action = DefaultAction
+        }
+        if weapon.weapon_type == WEAPON_TYPES.RADAR_MISSILE then
+            weapon.action = RadarMissileTriggerAction
+        elseif weapon.weapon_type == WEAPON_TYPES.CANNON then
+            weapon.action = CannonTriggerAction
         end
+        table.insert(WEAPON_HARDPOINTS, i, weapon)
     end
-    output.setNumber(32, SELECTED_WEAPON_INDEX)
-    output.setBool(31, SELECTED_WEAPON_LOADED)
+end
+
+SELECTED_HARDPOINT = 1
+
+
+-- try to make the following logic:
+-- if selected hardpoint is missile then release the hardpoint, if selected hardpoint is weapon, then trigger the weapon but don't release the hardpoint
+-- this would need to be processed by a breakout board, which will release a selected hardpoint, or send trigger command through composite
+-- check the possibility of using weapon groups / weapon types instead of selected hardpoints
+
+function onTick()
+    UpdateWeaponHardpoint()
+
+    local weapon_select_up = input.getBool(CHANNELS.BOOLEANS.INPUT.NEXT_HARDPOINT)
+    local weapon_select_down = input.getBool(CHANNELS.BOOLEANS.INPUT.PREVIOUS_HARDPOINT)
+    local weapons_fire = input.getBool(CHANNELS.BOOLEANS.INPUT.TRIGGER_BUTTON)
+
+    if weapon_select_up and PREVIOUS_WEAPON_SELECT_UP_STATE == false then
+        SELECTED_HARDPOINT = SELECTED_HARDPOINT + 1
+    elseif weapon_select_down and PREVIOUS_WEAPON_SELECT_DOWN_STATE == false then
+        SELECTED_HARDPOINT = SELECTED_HARDPOINT - 1
+    end
+    SELECTED_HARDPOINT = math.loop(1, WEAPONS_COUNT, SELECTED_HARDPOINT)
+
+    PREVIOUS_WEAPON_SELECT_UP_STATE = weapon_select_up
+    PREVIOUS_WEAPON_SELECT_DOWN_STATE = weapon_select_down
+
+    selected_weapon = WEAPON_HARDPOINTS[SELECTED_HARDPOINT]
+
+    selected_weapon.action(weapons_fire)
+
+    output.setNumber(CHANNELS.NUMBERS.OUTPUT.SELECTED_WEAPON_INDEX, SELECTED_HARDPOINT)
+    output.setNumber(CHANNELS.NUMBERS.OUTPUT.HARDPOINT_WEAPON_TYPE, selected_weapon.weapon_type)
+    output.setBool(CHANNELS.BOOLEANS.OUTPUT.SELECTED_HARDPOINT_LOADED, selected_weapon.loaded)
 end
 
