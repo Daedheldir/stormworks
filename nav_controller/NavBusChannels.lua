@@ -21,32 +21,3 @@ CHANNELS = {
         }
     }
 }
-
--- water pumps switch   1
--- water level dial 2
--- transponder locator switch 3
--- heating switch 4
-
--- backlight switch
--- searchlight switch
--- lights switch
--- generator clutch dial
-
--- speed dial
--- fuel consumption dial
--- estimated range dial
--- fuel level dial
-
-
--- throttle dial
--- reverse switch
--- eco mode switch
--- hybrid mode switch
-
--- autopilot switch
--- own coords mode switch
-
--- engine temperature dial
--- hybrid motor power dial
--- battery charge dial
--- battery charge rate dial

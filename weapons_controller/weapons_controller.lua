@@ -48,9 +48,6 @@ require("MathAdditions")
 PREVIOUS_WEAPON_SELECT_UP_STATE = false
 PREVIOUS_WEAPON_SELECT_DOWN_STATE = false
 
-function DefaultAction(weapons_fire)
-    return weapons_fire
-end
 
 selected_weapon = {
     loaded = false,
@@ -58,7 +55,7 @@ selected_weapon = {
     action = DefaultAction
 }
 
-WEAPONS_COUNT = 8--property.getNumber("Weapons Count")
+WEAPONS_COUNT = property.getNumber("Hardpoints Count")
 
 CHANNELS = {
     NUMBERS = {
@@ -92,6 +89,14 @@ CHANNELS = {
             TRIGGER_BUTTON = 32
         },
         OUTPUT = {
+            HARDPOINT_1_LAUNCH = 1,
+            HARDPOINT_2_LAUNCH = 2,
+            HARDPOINT_3_LAUNCH = 3,
+            HARDPOINT_4_LAUNCH = 4,
+            HARDPOINT_5_LAUNCH = 5,
+            HARDPOINT_6_LAUNCH = 6,
+            HARDPOINT_7_LAUNCH = 7,
+            HARDPOINT_8_LAUNCH = 8,
             SELECTED_HARDPOINT_FIRE = 31,
             SELECTED_HARDPOINT_LOADED = 32,
         }
@@ -103,10 +108,14 @@ WEAPON_TYPES = {
     CANNON = 12
 }
 
-function RadarMissileTriggerAction(weapons_fire)
-    output.setBool(CHANNELS.BOOLEANS.OUTPUT.SELECTED_HARDPOINT_FIRE, weapons_fire)
+function DefaultAction(weapon, weapons_fire)
+    return weapons_fire
 end
-function CannonTriggerAction(weapons_fire)
+
+function RadarMissileTriggerAction(weapon, weapons_fire)
+    output.setBool(weapon.hardpoint, weapons_fire)
+end
+function CannonTriggerAction(weapon, weapons_fire)
     output.setBool(CHANNELS.BOOLEANS.OUTPUT.SELECTED_HARDPOINT_FIRE, weapons_fire)
 end
 
@@ -116,13 +125,16 @@ function UpdateWeaponHardpoint()
     WEAPON_HARDPOINTS = {}
     for i = 1, WEAPONS_COUNT, 1 do
         local weapon = {
+            hardpoint = i,
             loaded = input.getBool(i),
             weapon_type = input.getNumber(i),
             action = DefaultAction
         }
         if weapon.weapon_type == WEAPON_TYPES.RADAR_MISSILE then
+            weapon.loaded = true
             weapon.action = RadarMissileTriggerAction
         elseif weapon.weapon_type == WEAPON_TYPES.CANNON then
+            weapon.loaded = true -- Change this later to use the loaded flag from the canon itself
             weapon.action = CannonTriggerAction
         end
         table.insert(WEAPON_HARDPOINTS, i, weapon)
@@ -156,7 +168,7 @@ function onTick()
 
     selected_weapon = WEAPON_HARDPOINTS[SELECTED_HARDPOINT]
 
-    selected_weapon.action(weapons_fire)
+    selected_weapon.action(selected_weapon, weapons_fire)
 
     output.setNumber(CHANNELS.NUMBERS.OUTPUT.SELECTED_WEAPON_INDEX, SELECTED_HARDPOINT)
     output.setNumber(CHANNELS.NUMBERS.OUTPUT.HARDPOINT_WEAPON_TYPE, selected_weapon.weapon_type)
