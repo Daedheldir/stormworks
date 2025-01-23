@@ -1,0 +1,36 @@
+{
+	"folders": [
+		{
+			"name": "tank_turret_camera",
+			"path": "tank_turret_camera"
+		},
+		{
+			"name": "tank_tracks_controller",
+			"path": "tank_tracks_controller"
+		},
+		{
+			"name": "touchscreen_combiner",
+			"path": "touchscreen_combiner"
+		},
+		{
+			"name": "missile_drop_compensator",
+			"path": "missile_drop_compensator"
+		},
+		{
+			"name": "cannon_reloader",
+			"path": "cannon_reloader"
+		},
+		{
+			"name": "lib",
+			"path": "lib"
+		},
+		{
+			"name": "radar_detector",
+			"path": "radar_detector"
+		},
+		{
+			"path": "nav_controller"
+		}
+	],
+	"settings": {}
+}

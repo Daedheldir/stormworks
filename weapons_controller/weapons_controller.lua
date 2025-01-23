@@ -43,7 +43,7 @@ end
 
 -- try require("Folder.Filename") to include code from another file in this, so you can store code in libraries
 -- the "LifeBoatAPI" is included by default in /_build/libs/ - you can use require("LifeBoatAPI") to get this, and use all the LifeBoatAPI.<functions>!
-require("MathAdditions")
+require("MathAdditions.MathAdditions")
 
 PREVIOUS_WEAPON_SELECT_UP_STATE = false
 PREVIOUS_WEAPON_SELECT_DOWN_STATE = false
@@ -161,7 +161,7 @@ function onTick()
     elseif weapon_select_down and PREVIOUS_WEAPON_SELECT_DOWN_STATE == false then
         SELECTED_HARDPOINT = SELECTED_HARDPOINT - 1
     end
-    SELECTED_HARDPOINT = math.loop(1, WEAPONS_COUNT, SELECTED_HARDPOINT)
+    SELECTED_HARDPOINT = mymath.loop(1, WEAPONS_COUNT, SELECTED_HARDPOINT)
 
     PREVIOUS_WEAPON_SELECT_UP_STATE = weapon_select_up
     PREVIOUS_WEAPON_SELECT_DOWN_STATE = weapon_select_down

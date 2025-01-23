@@ -24,41 +24,38 @@ do
         -- touchscreen defaults
         local screenConnection = simulator:getTouchScreen(1)
         simulator:setInputBool(1, simulator:getIsToggled(1))
-        simulator:setInputNumber(1, simulator:getSlider(1) * 50000)
-        simulator:setInputNumber(2, simulator:getSlider(2) - 0.5)
-        simulator:setInputNumber(3, simulator:getSlider(3) * 0.5 - 0.25)
-        simulator:setInputNumber(4, 1)
+        simulator:setInputNumber(1, 200)--simulator:getSlider(1) * 10000)
+        simulator:setInputNumber(2, 0)--simulator:getSlider(2) - 0.5)
+        simulator:setInputNumber(3, 0)--simulator:getSlider(3) * 0.5 - 0.25)
 
         simulator:setInputBool(2, true)
-        simulator:setInputNumber(5, 23000)
-        simulator:setInputNumber(6, 0.02)
-        simulator:setInputNumber(7, 0.08)
-        simulator:setInputNumber(8, 1)
+        simulator:setInputNumber(4, 23000)
+        simulator:setInputNumber(5, 0.02)
+        simulator:setInputNumber(6, 0.08)
 
         simulator:setInputBool(3, true)
-        simulator:setInputNumber(9, 13000)
-        simulator:setInputNumber(10, 0.05)
-        simulator:setInputNumber(11, 0.02)
-        simulator:setInputNumber(12, 1)
+        simulator:setInputNumber(7, 13000)
+        simulator:setInputNumber(8, 0.05)
+        simulator:setInputNumber(9, 0.02)
 
         simulator:setInputBool(4, true)
-        simulator:setInputNumber(13, 33000)
-        simulator:setInputNumber(14, 0.12)
-        simulator:setInputNumber(15, 0.01)
-        simulator:setInputNumber(16, 1)
+        simulator:setInputNumber(10, 33000)
+        simulator:setInputNumber(11, 0.12)
+        simulator:setInputNumber(12, 0.01)
 
         simulator:setInputBool(5, true)
-        simulator:setInputNumber(17, 8000)
-        simulator:setInputNumber(18, 0.3)
-        simulator:setInputNumber(19, 0.03)
-        simulator:setInputNumber(20, 1)
+        simulator:setInputNumber(13, 8000)
+        simulator:setInputNumber(14, 0.3)
+        simulator:setInputNumber(15, 0.03)
 
-        simulator:setInputBool(28, simulator:getIsClicked(5))
-        simulator:setInputNumber(30, simulator:getSlider(5) * screenConnection.width)
-        simulator:setInputNumber(31, simulator:getSlider(6) * screenConnection.height)
+        simulator:setInputNumber(28, 10)--simulator:getSlider(8)*1000)
+        simulator:setInputNumber(29, simulator:getSlider(9)*0.1)
+        simulator:setInputBool(28, screenConnection.isTouched)
+        simulator:setInputNumber(30, screenConnection.touchX)
+        simulator:setInputNumber(31, screenConnection.touchY)
         simulator:setInputNumber(32, ticks / 120)
 
-        simulator:setProperty("Target Merge Tolerance", 1000)
+        simulator:setProperty("Target Merge Tolerance", 200)
     end;
 end
 ---@endsection
@@ -73,11 +70,14 @@ require("LifeBoatAPI.Maths.LBMaths")
 require("LifeBoatAPI.Utils.LBTableUtils")
 require("LifeBoatAPI.Tickable.LBTouchScreen")
 require("MathAdditions")
-require("RadarTarget")
+require("ClassAdditions.RadarTarget")
+require("ColorDefinitions")
 
 RADAR_ROTATION_RADS = 0
-ZOOM_LEVEL = 8 --km
-TARGET_DETECTION_LIFETIME = 4 * LifeBoatAPI.LBMaths.lbmaths_secondsToTicks
+ZOOM_LEVEL = 3
+ZOOM_STEPS = {1, 2, 4, 8, 16, 32, 64}--km
+TARGET_DETECTION_LIFETIME = property.getNumber("Target Detection Point Lifetime") * LifeBoatAPI.LBMaths.lbmaths_secondsToTicks
+TARGET_MINIMUM_DISTANCE = property.getNumber("Target Detection Minimum Distance") * LifeBoatAPI.LBMaths.lbmaths_secondsToTicks
 
 --- @type table<number, RadarTarget>
 DETECTED_TARGETS = {}
@@ -90,7 +90,13 @@ MAX_DETECTED_TARGETS = 64
 
 RADAR_SWEEP_RANGE = 1 -- 1 == ONE FULL TURN == 360 DEGREES
 RADAR_ELEVATION_RANGE = 0.5
-TARGET_MERGE_TOLERANCE = 1
+TARGET_SQR_MERGE_TOLERANCE = 1
+
+GPS = LifeBoatAPI.LBVec:new()
+-- Linear speed speed in meters per tick
+FORWARD_LINEAR_SPEED = 0
+-- Angular speed in turns per tick
+ANGULAR_SPEED = 0
 
 ---Sorts RadarTargets based on their time since detection
 ---@param targets table<number, RadarTarget>
@@ -130,11 +136,10 @@ end
 
 ---@param tgt_1 RadarTarget
 ---@param tgt_2 RadarTarget
-function calculateDistanceBetweenTargets(tgt_1, tgt_2)
+function calculateSqrDistanceBetweenTargets(tgt_1, tgt_2)
     local tgt_1_vec = LifeBoatAPI.LBVec:newFromAzimuthElevation(tgt_1.azimuth, tgt_1.elevation, tgt_1.distance)
     local tgt_2_vec = LifeBoatAPI.LBVec:newFromAzimuthElevation(tgt_2.azimuth, tgt_2.elevation, tgt_2.distance)
-    local diff = tgt_1_vec:lbvec_sub(tgt_2_vec)
-    return diff:lbvec_length()
+    return LBVecExtension.sqrDistance(tgt_1_vec, tgt_2_vec)
 end
 
 
@@ -151,21 +156,21 @@ function processRadarTargets(detected_targets, max_detected_targets_count)
     local new_targets_detected = false
     local detected_targets_count = 0
     -- add newly detected targets
-    for i = 1, 7, 1 do
+    for i = 1, 8, 1 do
         local target_detected = input.getBool(i)
         if target_detected then
             detected_targets_count = detected_targets_count + 1
             new_targets_detected = true
-            local target_num_index = i + (i - 1) * 3
+            local target_num_index = i + (i - 1) * 2
             local new_target = RadarTarget:new(
                 nil,
                 target_detected,
                 input.getNumber(target_num_index),
                 input.getNumber(target_num_index + 1),
                 input.getNumber(target_num_index + 2),
-                input.getNumber(target_num_index + 3) + i / 1000
+                i / 1000
             )
-            if new_target.horizontal_distance < ZOOM_LEVEL * 1000 then
+            if new_target.horizontal_distance < ZOOM_STEPS[ZOOM_LEVEL] * 1000 and new_target.distance > TARGET_MINIMUM_DISTANCE then
                 table.insert(detected_targets, new_target)
             end
         end
@@ -188,15 +193,17 @@ function processRadarTargets(detected_targets, max_detected_targets_count)
     -- update detection times
     --- @type table<number, RadarTarget>
     local active_targets = {}
-    for i, target in ipairs(detected_targets) do
-        local step = 1
-        if SELECTED_TARGET_ID == target.id then
-            step = 0.1
-        end
-        target:radarTarget_updateTimeSinceDetection(step)
-        if target.time_since_detected < TARGET_DETECTION_LIFETIME then
+    for k, target in pairs(detected_targets) do
+        target:radarTarget_updateTimeSinceDetection(1)
+        if SELECTED_TARGET_ID == target.id or target.time_since_detected < TARGET_DETECTION_LIFETIME then
             table.insert(active_targets, target)
         end
+    end
+    
+    --update azimuths and distances
+    for k, tgt in pairs(active_targets) do
+        tgt:radarTarget_updateAzimuthWithAngularSpeed(-ANGULAR_SPEED)
+        tgt:radarTarget_updateDistance(FORWARD_LINEAR_SPEED)
     end
 
     if not new_targets_detected then
@@ -204,9 +211,6 @@ function processRadarTargets(detected_targets, max_detected_targets_count)
     end
 
     -- remove duplicate targets if new targets were added
-    local distance_tolerance = TARGET_MERGE_TOLERANCE * ZOOM_LEVEL * 1000
-    local azimuth_tolerance = TARGET_MERGE_TOLERANCE * RADAR_SWEEP_RANGE
-    local elevation_tolerance = TARGET_MERGE_TOLERANCE * RADAR_ELEVATION_RANGE
     for i, tgt_1 in ipairs(active_targets) do
         local elements_to_remove = {}
         for j = i + 1, #active_targets, 1 do
@@ -214,20 +218,8 @@ function processRadarTargets(detected_targets, max_detected_targets_count)
                 break
             end
             local tgt_2 = active_targets[j]
-            --local distance_tolerance = TARGET_MERGE_TOLERANCE * ZOOM_LEVEL * 1000
-            --local azimuth_tolerance = TARGET_MERGE_TOLERANCE * RADAR_SWEEP_RANGE
-            --local elevation_tolerance = TARGET_MERGE_TOLERANCE * RADAR_ELEVATION_RANGE
-            -- if there is another target close to current one then merge them
-            --if math.abs(tgt_1.distance - tgt_2.distance) < distance_tolerance
-            --    and math.abs(tgt_1.azimuth - tgt_2.azimuth) < azimuth_tolerance
-            --    and math.abs(tgt_1.elevation - tgt_2.elevation) < elevation_tolerance then
-            --        table.insert(elements_to_remove, tgt_1.time_since_detected < tgt_2.time_since_detected and j or i)
-            --        if tgt_1.time_since_detected < tgt_2.time_since_detected then
-            --            tgt_1.id = tgt_2.id
-            --        else
-            --            tgt_2.id = tgt_1.id
-            --        end
-            local tgt_distance = calculateDistanceBetweenTargets(tgt_1, tgt_2)
+            local tgt_distance = calculateSqrDistanceBetweenTargets(tgt_1, tgt_2)
+
             if tgt_distance < TARGET_MERGE_TOLERANCE then
                 table.insert(elements_to_remove, tgt_1.time_since_detected < tgt_2.time_since_detected and j or i)
                 if tgt_1.time_since_detected < tgt_2.time_since_detected then
@@ -262,7 +254,9 @@ function drawRadarDetector(screen, radar_radius, center, radar_rotation_rads, zo
     screen.setColor(0, 255, 0, 255)
     screen.drawText(center.x - radar_radius, center.y - radar_radius, distance_text)
     screen.drawCircle(center.x, center.y, radar_radius)
+    screen.setColor(0, 255, 0, 125)
     screen.drawCircle(center.x, center.y, radar_radius / 2)
+    screen.setColor(0, 255, 0, 255)
     screen.drawLine(center.x, center.y, center.x + radar_line_end_pos.x * radar_radius,
         center.y - radar_line_end_pos.y * radar_radius)
 
@@ -271,17 +265,19 @@ function drawRadarDetector(screen, radar_radius, center, radar_rotation_rads, zo
     screen.drawLine(center.x - radar_radius, center.y, center.x + radar_radius, center.y)
 
     for index, target in ipairs(DETECTED_TARGETS) do
-        if target.detected then
-            local target_vec = LifeBoatAPI.LBVec:new(math.sin(target.azimuth * LifeBoatAPI.LBMaths.lbmaths_2pi),
-                math.cos(target.azimuth * LifeBoatAPI.LBMaths.lbmaths_2pi))
-            target_vec = target_vec:lbvec_scale((radar_radius) * (target.horizontal_distance / 1000) /
-                ZOOM_LEVEL)
-            local target_pos = LifeBoatAPI.LBVec:new(center.x + target_vec.x, center.y - target_vec.y)
+        local target_vec = LifeBoatAPI.LBVec:new(math.sin(target.azimuth * LifeBoatAPI.LBMaths.lbmaths_2pi),
+            math.cos(target.azimuth * LifeBoatAPI.LBMaths.lbmaths_2pi))
+        target_vec = target_vec:lbvec_scale(radar_radius * (target.horizontal_distance / 1000) /
+            ZOOM_STEPS[ZOOM_LEVEL])
+        local target_pos = LifeBoatAPI.LBVec:new(center.x + target_vec.x, center.y - target_vec.y)
+        if target.id == SELECTED_TARGET_ID then
+            screen.setColor(255, 255, 0, 255)
+        else
             local alpha = LifeBoatAPI.LBMaths.lbmaths_lerp(255, 0, target.time_since_detected / TARGET_DETECTION_LIFETIME)
             screen.setColor(255, 0, 0, alpha)
-            screen.drawCircle(target_pos.x, target_pos.y, 1)
-            screen.drawText(target_pos.x - 2, target_pos.y - 7, tostring(target.id)) -- target id
         end
+        screen.drawCircle(target_pos.x, target_pos.y, 1)
+        screen.drawText(target_pos.x - 2, target_pos.y - 7, tostring(target.id)) -- target id
     end
 end
 
@@ -289,6 +285,8 @@ end
 ---@param left_top_point LBVec
 ---@param width number
 function drawTargetsTable(screen, left_top_point, width)
+    screen.setColor(0, 0, 0, 255)
+    screen.drawRectF(left_top_point.x, left_top_point.y, width - 1, screen.getHeight() - 1)
     screen.setColor(255, 255, 255, 255)
     screen.drawRect(left_top_point.x, left_top_point.y, width - 1, screen.getHeight() - 1)
     local target_box_height = 12
@@ -301,6 +299,14 @@ function drawTargetsTable(screen, left_top_point, width)
     buttons_max_count = buttons_max_count > #targets and #targets or buttons_max_count
 
     sortRadarTargetsByDetectionTime(targets, true)
+    for key, tgt in pairs(DETECTED_TARGETS) do
+        if tgt.id == SELECTED_TARGET_ID then
+            local selected_tgt = DETECTED_TARGETS[key]
+            table.remove(DETECTED_TARGETS, key)
+            table.insert(DETECTED_TARGETS, 1, selected_tgt)
+            break
+        end
+    end
     for i = 1, buttons_max_count, 1 do
         target = targets[i]
         if not target.detected then
@@ -319,19 +325,29 @@ function drawTargetsTable(screen, left_top_point, width)
         TARGET_BUTTONS[target.id]:lbbutton_draw()
         --screen.drawText(target_box_left_top.x + 2, target_box_left_top.y + 3, tostring(i)) -- target id
         target_box_left_top.y = target_box_left_top.y + 1
-        local str = math.toStringRounded(target.horizontal_distance / 1000, 3)
+        local str = MathExtension.toStringRounded(target.horizontal_distance / 1000, 3)
         screen.drawText(target_box_left_top.x + 14, target_box_left_top.y, string.format("H: %s km", str))
 
-        str = math.toStringRounded(target.vertical_distance / 1000, 3)
+        str = MathExtension.toStringRounded(target.vertical_distance / 1000, 3)
         screen.drawText(target_box_left_top.x + 14, target_box_left_top.y + 6, string.format("V: %s km", str))
         ::continue::
     end
 end
 
+ZOOM_IN = LifeBoatAPI.LBTouchScreen:lbtouchscreen_newButton(0,8,7,7,"+", ColorDefinitions.white, ColorDefinitions.gray, ColorDefinitions.white, ColorDefinitions.green, ColorDefinitions.white)
+ZOOM_OUT = LifeBoatAPI.LBTouchScreen:lbtouchscreen_newButton(0,8+7,7,7,"-", ColorDefinitions.white, ColorDefinitions.gray, ColorDefinitions.white, ColorDefinitions.green, ColorDefinitions.white)
 
---TODO: MODIFY THIS TO MERGE TARGETS BASED ON PROXIMITY IN METERS, NOT AZIMUTH-ELEVATION-DISTANCE
+
 function onTick()
     LifeBoatAPI.LBTouchScreen:lbtouchscreen_onTick(27)
+    if ZOOM_IN:lbbutton_isReleased() then
+        ZOOM_LEVEL = ZOOM_LEVEL - 1
+    elseif ZOOM_OUT:lbbutton_isReleased() then
+        ZOOM_LEVEL = ZOOM_LEVEL + 1
+    end
+    ZOOM_LEVEL = MathExtension.clamp(1, #ZOOM_STEPS, ZOOM_LEVEL)
+
+
     for key, value in pairs(TARGET_BUTTONS) do
         if value:lbbutton_isReleased() then
             if SELECTED_TARGET_ID == key then
@@ -342,28 +358,28 @@ function onTick()
         end
     end
 
+    GPS = LifeBoatAPI.LBVec:new(input.getNumber(CHANNELS.RADAR_DETECTOR.NUMBER.INPUT.BASE_GPS_X), input.getNumber(CHANNELS.RADAR_DETECTOR.NUMBER.INPUT.BASE_GPS_Y))
 
-    TARGET_MERGE_TOLERANCE = property.getNumber("Target Merge Tolerance") / 100
+    FORWARD_LINEAR_SPEED = input.getNumber(CHANNELS.RADAR_DETECTOR.NUMBER.INPUT.BASE_FORWARD_VELOCITY) * LifeBoatAPI.LBMaths.lbmaths_ticksToSeconds
+    ANGULAR_SPEED = input.getNumber(CHANNELS.RADAR_DETECTOR.NUMBER.INPUT.BASE_ANGULAR_SPEED) * LifeBoatAPI.LBMaths.lbmaths_ticksToSeconds
+
+    TARGET_MERGE_TOLERANCE = ZOOM_STEPS[ZOOM_LEVEL] * property.getNumber("Target Merge Tolerance")^2
     DETECTED_TARGETS = processRadarTargets(DETECTED_TARGETS, MAX_PROCESSED_TARGETS_PER_TICK)
     RADAR_ROTATION_RADS = math.fmod(input.getNumber(CHANNELS.RADAR_DETECTOR.NUMBER.INPUT.RADAR_ROTATION), 1) * LifeBoatAPI.LBMaths.lbmaths_2pi
 
     local selected_target_exists = false
-    local selected_target_key = -1
     for key, tgt in pairs(DETECTED_TARGETS) do
         if tgt.id == SELECTED_TARGET_ID then
             selected_target_exists = true
-            selected_target_key = key
+            output.setNumber(CHANNELS.RADAR_DETECTOR.NUMBER.OUTPUT.SELECTED_TARGET_ID, tgt.id)
+            output.setNumber(CHANNELS.RADAR_DETECTOR.NUMBER.OUTPUT.SELECTED_TARGET_AZIMUTH, tgt.azimuth)
+            output.setNumber(CHANNELS.RADAR_DETECTOR.NUMBER.OUTPUT.SELECTED_TARGET_ELEVATION, tgt.elevation)
+            output.setNumber(CHANNELS.RADAR_DETECTOR.NUMBER.OUTPUT.SELECTED_TARGET_DISTANCE, tgt.distance)
             break
         end
     end
     if not selected_target_exists then
         SELECTED_TARGET_ID = -1
-    elseif DETECTED_TARGETS[selected_target_key] then
-        local tgt = DETECTED_TARGETS[selected_target_key]
-        output.setNumber(CHANNELS.RADAR_DETECTOR.NUMBER.OUTPUT.SELECTED_TARGET_ID, tgt.id)
-        output.setNumber(CHANNELS.RADAR_DETECTOR.NUMBER.OUTPUT.SELECTED_TARGET_AZIMUTH, tgt.azimuth)
-        output.setNumber(CHANNELS.RADAR_DETECTOR.NUMBER.OUTPUT.SELECTED_TARGET_ELEVATION, tgt.elevation)
-        output.setNumber(CHANNELS.RADAR_DETECTOR.NUMBER.OUTPUT.SELECTED_TARGET_DISTANCE, tgt.distance)
     end
 end
 
@@ -376,7 +392,10 @@ function onDraw()
     local radar_radius = ((2 * screen_longer_side / 3) < screen_shorter_side) and (screen_longer_side / 2) or
         screen_shorter_side / 2
     local radar_center = LifeBoatAPI.LBVec:new(radar_radius, screen_size.y / 2)
-
-    drawRadarDetector(screen, radar_radius, radar_center, RADAR_ROTATION_RADS, ZOOM_LEVEL)
-    drawTargetsTable(screen, LifeBoatAPI.LBVec:new(radar_center.x + radar_radius, 0), screen_size.x - 2 * radar_radius)
+    drawRadarDetector(screen, radar_radius, radar_center, RADAR_ROTATION_RADS, ZOOM_STEPS[ZOOM_LEVEL])
+    if screen_size.x > screen_size.y then
+        drawTargetsTable(screen, LifeBoatAPI.LBVec:new(radar_center.x + radar_radius, 0), screen_size.x - 2 * radar_radius)
+    end
+    ZOOM_IN:lbbutton_draw()
+    ZOOM_OUT:lbbutton_draw()
 end

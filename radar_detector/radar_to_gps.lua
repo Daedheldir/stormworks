@@ -28,16 +28,15 @@ do
 
         -- touchscreen defaults
         local screenConnection = simulator:getTouchScreen(1)
-        simulator:setInputNumber(CHANNELS.RADAR_TO_GPS.NUMBER.INPUT.TARGET_ID, 1)
         simulator:setInputNumber(CHANNELS.RADAR_TO_GPS.NUMBER.INPUT.TARGET_DISTANCE, 1000)
-        simulator:setInputNumber(CHANNELS.RADAR_TO_GPS.NUMBER.INPUT.TARGET_AZIMUTH, simulator:getSlider(1) - 0.5)
+        simulator:setInputNumber(CHANNELS.RADAR_TO_GPS.NUMBER.INPUT.TARGET_AZIMUTH, 0)--simulator:getSlider(1) - 0.5)
         simulator:setInputNumber(CHANNELS.RADAR_TO_GPS.NUMBER.INPUT.TARGET_ELEVATION, simulator:getSlider(2) * 0.5 - 0.25)
-        simulator:setInputNumber(CHANNELS.RADAR_TO_GPS.NUMBER.INPUT.BASE_GPS_X, 20 * (simulator:getSlider(3) - 0.5))
-        simulator:setInputNumber(CHANNELS.RADAR_TO_GPS.NUMBER.INPUT.BASE_GPS_Y, 20 * (simulator:getSlider(4) - 0.5))
-        simulator:setInputNumber(CHANNELS.RADAR_TO_GPS.NUMBER.INPUT.BASE_GPS_Z, 20 * (simulator:getSlider(5) - 0.5))
+        simulator:setInputNumber(CHANNELS.RADAR_TO_GPS.NUMBER.INPUT.BASE_GPS_X, 0)--20 * (simulator:getSlider(3) - 0.5))
+        simulator:setInputNumber(CHANNELS.RADAR_TO_GPS.NUMBER.INPUT.BASE_GPS_Y, 0)--20 * (simulator:getSlider(4) - 0.5))
+        simulator:setInputNumber(CHANNELS.RADAR_TO_GPS.NUMBER.INPUT.BASE_GPS_Z, 0)--20 * (simulator:getSlider(5) - 0.5))
         simulator:setInputNumber(CHANNELS.RADAR_TO_GPS.NUMBER.INPUT.BASE_COMPASS_HEADING, simulator:getSlider(6) - 0.5)
-        simulator:setInputNumber(CHANNELS.RADAR_TO_GPS.NUMBER.INPUT.RADAR_X_TILT, simulator:getSlider(7) - 0.5)
-        simulator:setInputNumber(CHANNELS.RADAR_TO_GPS.NUMBER.INPUT.RADAR_Z_TILT, simulator:getSlider(8) - 0.5)
+        simulator:setInputNumber(CHANNELS.RADAR_TO_GPS.NUMBER.INPUT.RADAR_X_TILT, 0.5*simulator:getSlider(7) - 0.25) -- roll
+        simulator:setInputNumber(CHANNELS.RADAR_TO_GPS.NUMBER.INPUT.RADAR_Z_TILT, 0.5*simulator:getSlider(8) - 0.25) -- pitch
     end;
 end
 ---@endsection
@@ -47,8 +46,8 @@ end
 
 -- try require("Folder.Filename") to include code from another file in this, so you can store code in libraries
 -- the "LifeBoatAPI" is included by default in /_build/libs/ - you can use require("LifeBoatAPI") to get this, and use all the LifeBoatAPI.<functions>!
-require("RadarTarget")
-require("MathAdditions")
+require("ClassAdditions.RadarTarget")
+require("MathAdditions.LBVecAdditions")
 require("LifeBoatAPI.Maths.LBVec")
 require("LifeBoatAPI.Maths.LBMaths")
 
@@ -66,10 +65,10 @@ function onTick()
         input.getNumber(INPUT_NUM.BASE_GPS_Z)
     )
     local compass_heading = input.getNumber(INPUT_NUM.BASE_COMPASS_HEADING)
-    local tilt_x = input.getNumber(INPUT_NUM.RADAR_X_TILT) -- pitch
-    local tilt_z = input.getNumber(INPUT_NUM.RADAR_Z_TILT) -- roll
+    local tilt_x = input.getNumber(INPUT_NUM.RADAR_X_TILT) -- roll
+    local tilt_z = input.getNumber(INPUT_NUM.RADAR_Z_TILT) -- pitch
 
-    local target_global_gps = LifeBoatAPI.LBVec.globalGPSFromAzimuthElevationDistance(target_azimuth, target_elevation, target_distance, base_gps, compass_heading, tilt_z, tilt_x)
+    local target_global_gps = LBVecExtension.globalGPSFromAzimuthElevationDistance(target_azimuth, target_elevation, target_distance, base_gps, compass_heading, tilt_z, tilt_x)
 
     output.setNumber(1, target_global_gps.x)
     output.setNumber(2, target_global_gps.y)

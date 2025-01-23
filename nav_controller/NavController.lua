@@ -50,25 +50,25 @@ require("NavBusChannels")
 ticks = 0
 
 local inputChannels = {}
-inputChannels.compass =             CHANNELS.NAVIGATION.NUMBER.COMPASS
-inputChannels.gpsX =                CHANNELS.NAVIGATION.NUMBER.GPS_X
-inputChannels.gpsY =                CHANNELS.NAVIGATION.NUMBER.GPS_Y
-inputChannels.targetX =             CHANNELS.NAVIGATION.NUMBER.TARGET_X
-inputChannels.targetY =             CHANNELS.NAVIGATION.NUMBER.TARGET_Y
-inputChannels.speed =               CHANNELS.NAVIGATION.NUMBER.SPEED
+inputChannels.compass =             CHANNELS.NAVIGATION.NUMBER.INPUT.COMPASS
+inputChannels.gpsX =                CHANNELS.NAVIGATION.NUMBER.INPUT.GPS_X
+inputChannels.gpsY =                CHANNELS.NAVIGATION.NUMBER.INPUT.GPS_Y
+inputChannels.targetX =             CHANNELS.NAVIGATION.NUMBER.INPUT.TARGET_X
+inputChannels.targetY =             CHANNELS.NAVIGATION.NUMBER.INPUT.TARGET_Y
+inputChannels.speed =               CHANNELS.NAVIGATION.NUMBER.INPUT.SPEED
 
 local outputChannels = {}
-outputChannels.vectorToTargetX =    CHANNELS.NAVIGATION.NUMBER.VECTOR_TO_TARGET_X
-outputChannels.vectorToTargetY =    CHANNELS.NAVIGATION.NUMBER.VECTOR_TO_TARGET_Y
-outputChannels.kilometersToTarget = CHANNELS.NAVIGATION.NUMBER.DISTANCE_TO_TARGET
-outputChannels.timeToTarget =       CHANNELS.NAVIGATION.NUMBER.TIME_TO_TARGET
-outputChannels.azimuth =            CHANNELS.NAVIGATION.NUMBER.AZIMUTH
-outputChannels.targetAngle =        CHANNELS.NAVIGATION.NUMBER.TARGET_ANGLE
+outputChannels.vectorToTargetX =    CHANNELS.NAVIGATION.NUMBER.OUTPUT.VECTOR_TO_TARGET_X
+outputChannels.vectorToTargetY =    CHANNELS.NAVIGATION.NUMBER.OUTPUT.VECTOR_TO_TARGET_Y
+outputChannels.kilometersToTarget = CHANNELS.NAVIGATION.NUMBER.OUTPUT.DISTANCE_TO_TARGET
+outputChannels.timeToTarget =       CHANNELS.NAVIGATION.NUMBER.OUTPUT.TIME_TO_TARGET
+outputChannels.azimuth =            CHANNELS.NAVIGATION.NUMBER.OUTPUT.AZIMUTH
+outputChannels.targetAngle =        CHANNELS.NAVIGATION.NUMBER.OUTPUT.TARGET_ANGLE
 
 
 function onTick()
     ticks = ticks + 1
-    local own_coords_toggle = input.getBool(CHANNELS.NAVIGATION.BINARY.OWN_COORDS_TOGGLE)
+    local own_coords_toggle = input.getBool(CHANNELS.NAVIGATION.BINARY.INPUT.OWN_COORDS_TOGGLE)
     local speed = input.getNumber(inputChannels.speed) or 0
     local compass = input.getNumber(inputChannels.compass) or 0
     local compassRads = compass*LifeBoatAPI.LBMaths.lbmaths_2pi
